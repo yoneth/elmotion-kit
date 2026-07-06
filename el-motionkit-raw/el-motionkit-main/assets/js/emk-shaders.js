@@ -1348,8 +1348,9 @@
         if (settingKey !== 'emk_shader_enable') return;
         this.element = this.$element && this.$element[0];
         if (!this.element) return;
-        if (this.getElementSettings('emk_shader_enable') === 'yes') {
-          EMKShaders.run(this.element, this.getElementSettings());
+        var settings = buildSettings(this);
+        if (getSetting(settings, 'emk_shader_enable') === 'yes') {
+          EMKShaders.run(this.element, settings);
         } else {
           EMKShaders.destroy(this.element);
         }
