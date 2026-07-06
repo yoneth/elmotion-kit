@@ -743,7 +743,13 @@
   // Get a color setting, checking for legacy color keys and globals
   function getColorSetting(settings, key, fallback) {
     var raw = settings.get(key);
-    if (raw && typeof raw === 'string' && raw !== '') {
+    if (!raw) return fallback;
+    // Elementor 4.x color picker stores { r, g, b, a } objects
+    if (typeof raw === 'object' && raw.r !== undefined) {
+      var a = raw.a !== undefined ? raw.a : 1;
+      return 'rgba(' + Math.round(raw.r) + ',' + Math.round(raw.g) + ',' + Math.round(raw.b) + ',' + a + ')';
+    }
+    if (typeof raw === 'string' && raw !== '') {
       if (raw.indexOf('globals/colors?id=') === 0) {
         var resolved = resolveGlobalColor(raw);
         if (resolved) return resolved;
