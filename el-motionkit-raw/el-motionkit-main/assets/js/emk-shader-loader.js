@@ -71,10 +71,30 @@
     }
   }
 
+  function getSetting(settings, key) {
+    if (!settings) return undefined;
+    // Direct getElementSettings call (works for widget-specific controls)
+    if (typeof settings.get === 'function') {
+      try { var v = settings.get(key); if (v !== undefined && v !== null && v !== '') return v; } catch(e) {}
+    }
+    // Fallback from DOM data-settings (needed for custom Common controls in Elementor 4.x)
+    if (settings.domSettings && settings.domSettings[key] !== undefined) return settings.domSettings[key];
+    return undefined;
+  }
+
+  function buildSettings(handler) {
+    var domSettings = null;
+    if (handler.element && handler.element.dataset && handler.element.dataset.settings) {
+      try { domSettings = JSON.parse(handler.element.dataset.settings); } catch(e) {}
+    }
+    return { get: function(k) { return getSetting({get: function(key) { return handler.getElementSettings(key); }, domSettings: domSettings}, k); }, domSettings: domSettings };
+  }
+
   var ShaderHandler = elementorModules.frontend.handlers.Base.extend({
     bindEvents: function () {
-      if (this.getElementSettings('emk_shader_enable') === 'yes') {
-        enqueueOrRun(this.$element[0], this.getElementSettings());
+      var settings = buildSettings(this);
+      if (getSetting(settings, 'emk_shader_enable') === 'yes') {
+        enqueueOrRun(this.$element[0], settings);
       }
     },
     onDestroy: function () {
