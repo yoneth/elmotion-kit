@@ -1,6 +1,9 @@
 == Changelog ==
 
 
+= 2.5.2 =
+* Fixed: EMK Shaders editor live preview now loads the editor bridge via the direct Elementor editor footer fallback and polls the selected Elementor model, so Advanced-tab shader toggles render immediately in the preview iframe on Elementor 4.1+.
+
 = 2.5.1 =
 * Security: Removed unsanitized SVG upload capability; removed dead/unauthenticated AJAX endpoint.
 * Fixed: Changelog wording — legacy changelog entries rephrased for accuracy (rename/fork vs independent creation distinction).

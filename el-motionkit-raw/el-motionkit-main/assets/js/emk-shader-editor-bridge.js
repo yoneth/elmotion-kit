@@ -1,81 +1,274 @@
-/*! EMK Shader Editor Bridge — relays setting changes to preview iframe */
+/*! EMK Shader Editor Bridge — relays Elementor editor settings to the preview iframe */
 (function ($) {
   'use strict';
 
-  if (typeof elementor === 'undefined' || !elementor.hooks) return;
+  if (typeof window.elementor === 'undefined') return;
 
-  var iframe, iframeWindow;
+  var VERSION = '2.5.2-live-preview-poll';
+  var iframe = null;
+  var iframeWindow = null;
+  var lastSnapshotById = {};
+  var currentId = null;
+  var scheduled = null;
+  var polling = null;
 
-  function getIframe() {
-    if (!iframe || iframe.contentWindow !== iframeWindow) {
-      iframe = document.getElementById('elementor-preview-iframe');
-      iframeWindow = iframe && iframe.contentWindow;
+  function getIframeWindow() {
+    var nextIframe = document.getElementById('elementor-preview-iframe');
+    var nextWindow = nextIframe && nextIframe.contentWindow;
+    if (nextIframe !== iframe || nextWindow !== iframeWindow) {
+      iframe = nextIframe;
+      iframeWindow = nextWindow;
+      lastSnapshotById = {};
     }
     return iframeWindow;
   }
 
-  function getShadersHandler(element) {
-    var win = getIframe();
-    if (!win || !element) return null;
-    // Elementor stores handlers per data-id
-    var id = element.dataset.id || element.getAttribute('data-id');
-    if (!id) return null;
-    // Find handler through jQuery data
-    var $el = win.jQuery && win.jQuery(element);
-    if ($el && $el.data) {
-      return $el.data('elementor-frontend-handler');  
+  function getIframeDocument() {
+    var win = getIframeWindow();
+    try {
+      return win && win.document;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function escapeAttr(value) {
+    return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  }
+
+  function getElementInIframe(id) {
+    var doc = getIframeDocument();
+    return doc && id ? doc.querySelector('[data-id="' + escapeAttr(id) + '"]') : null;
+  }
+
+  function getRootContainer() {
+    var documentModel = elementor.documents &&
+      elementor.documents.getCurrent &&
+      elementor.documents.getCurrent();
+    return documentModel && documentModel.container;
+  }
+
+  function childrenOf(container) {
+    var children = container && container.children;
+    if (!children) return [];
+    if (Array.isArray(children)) return children;
+    if (children.models) return children.models;
+    if (typeof children.toArray === 'function') return children.toArray();
+    return [];
+  }
+
+  function findContainer(container, id) {
+    var children;
+    var i;
+    var found;
+    if (!container || !id) return null;
+    if (container.id === id) return container;
+    children = childrenOf(container);
+    for (i = 0; i < children.length; i++) {
+      found = findContainer(children[i], id);
+      if (found) return found;
     }
     return null;
   }
 
-  function runShaders(element, settings) {
-    var win = getIframe();
-    if (!win || !win.EMKShaders) return;
-    if (!settings || settings.emk_shader_enable !== 'yes') {
-      win.EMKShaders.destroy(element);
-      return;
+  function getModelId(model) {
+    if (!model) return null;
+    if (model.id) return model.id;
+    if (model.model && model.model.id) return model.model.id;
+    if (model.attributes && model.attributes.id) return model.attributes.id;
+    if (typeof model.get === 'function') {
+      return model.get('id') || model.get('_id') || model.get('dataId') || null;
     }
-    // Wrap settings with .get() method
-    var wrapped = { get: function (key) { return settings[key]; } };
-    win.EMKShaders.run(element, wrapped);
+    return null;
   }
 
-  // Listen for setting changes via Elementor hooks (parent window)
-  elementor.hooks.addAction('panel/open_editor/widget', function (panel, model) {
-    // When element is selected in editor
-  });
-
-  // Better: listen for all setting changes on any element
-  elementor.channels.editor.on('change:emk_shader_enable', function (model) {
-    var iframeEl = getIframe() && getIframe().document.querySelector('[data-id="' + model.id + '"]');
-    if (iframeEl) {
-      runShaders(iframeEl, model.changed);
+  function copyOwn(target, source) {
+    var key;
+    if (!source) return target;
+    for (key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        target[key] = source[key];
+      }
     }
-  });
+    return target;
+  }
 
-  // Catch-all: when any element setting changes in the editor
-  elementor.channels.editor.on('change', function (model) {
-    if (!model.changed) return;
-    var changedKeys = Object.keys(model.changed);
-    var hasShaderChange = changedKeys.some(function (k) { return k.indexOf('emk_shader_') === 0; });
-    if (!hasShaderChange) return;
+  function getSettings(model) {
+    var raw = null;
+    var nested = null;
+    var out = {};
 
-    var iframeEl = getIframe() && getIframe().document.querySelector('[data-id="' + model.id + '"]');
-    if (!iframeEl) return;
+    if (!model) return out;
 
-    if (model.changed.emk_shader_enable === 'yes') {
-      // Need the full settings for run(), not just the changed ones
-      var allSettings = model.attributes;
-      runShaders(iframeEl, allSettings);
-    } else if ('emk_shader_enable' in model.changed) {
-      runShaders(iframeEl, { emk_shader_enable: '' });
+    if (model.settings) {
+      raw = model.settings.attributes || model.settings;
     }
-  });
 
-  // Also listen via the panel events (more reliable in some cases)
-  $(document).on('change', '.elementor-control-emk_shader_enable input, .elementor-control-emk_shader_enable .elementor-switch', function () {
-    // This catches the control change in the panel
-    // The model change above should already handle this
-  });
+    if (!raw && typeof model.get === 'function') {
+      nested = model.get('settings');
+      raw = nested && (nested.attributes || nested);
+    }
 
+    if (!raw && model.attributes) {
+      raw = model.attributes;
+    }
+
+    copyOwn(out, raw);
+    copyOwn(out, model.changed);
+
+    return out;
+  }
+
+  function getSettingsForId(id) {
+    return getSettings(findContainer(getRootContainer(), id));
+  }
+
+  function getSelectedId() {
+    var doc = getIframeDocument();
+    var selected = doc && doc.querySelector('.elementor-element-edit-mode');
+    if (selected) return selected.getAttribute('data-id');
+    return currentId;
+  }
+
+  function shaderSnapshot(settings) {
+    var keys = [];
+    var out = {};
+    var i;
+    var key;
+
+    if (!settings) return '{}';
+    for (key in settings) {
+      if (
+        Object.prototype.hasOwnProperty.call(settings, key) &&
+        key.indexOf('emk_shader_') === 0
+      ) {
+        keys.push(key);
+      }
+    }
+    keys.sort();
+    for (i = 0; i < keys.length; i++) {
+      out[keys[i]] = settings[keys[i]];
+    }
+    return JSON.stringify(out);
+  }
+
+  function withShaders(callback) {
+    var attempts = 0;
+    function wait() {
+      var win = getIframeWindow();
+      if (win && win.EMKShaders) {
+        callback(win);
+        return;
+      }
+      attempts += 1;
+      if (attempts <= 50) {
+        setTimeout(wait, 100);
+      }
+    }
+    wait();
+  }
+
+  function renderById(id, settings, force) {
+    var snapshot;
+    if (!id) return;
+
+    snapshot = shaderSnapshot(settings);
+    if (!force && lastSnapshotById[id] === snapshot) return;
+    lastSnapshotById[id] = snapshot;
+
+    withShaders(function (win) {
+      var element = getElementInIframe(id);
+      if (!element) return;
+
+      if (!settings || settings.emk_shader_enable !== 'yes') {
+        win.EMKShaders.destroy(element);
+        return;
+      }
+
+      win.EMKShaders.run(element, {
+        get: function (key) {
+          return settings[key];
+        }
+      });
+    });
+  }
+
+  function syncSelected(force) {
+    var id = getSelectedId();
+    if (!id) return;
+    currentId = id;
+    renderById(id, getSettingsForId(id), !!force);
+  }
+
+  function scheduleSync(force) {
+    clearTimeout(scheduled);
+    scheduled = setTimeout(function () {
+      syncSelected(!!force);
+    }, 80);
+    setTimeout(function () { syncSelected(!!force); }, 350);
+    setTimeout(function () { syncSelected(!!force); }, 1000);
+  }
+
+  function bindModel(model) {
+    var settingsModel;
+    currentId = getModelId(model) || currentId;
+
+    if (model && !model.__emkShaderBridgeBound && typeof model.on === 'function') {
+      model.__emkShaderBridgeBound = true;
+      model.on('change', function () { scheduleSync(true); });
+    }
+
+    settingsModel = model && (model.settings || (typeof model.get === 'function' && model.get('settings')));
+    if (
+      settingsModel &&
+      !settingsModel.__emkShaderBridgeBound &&
+      typeof settingsModel.on === 'function'
+    ) {
+      settingsModel.__emkShaderBridgeBound = true;
+      settingsModel.on('change', function () { scheduleSync(true); });
+    }
+
+    scheduleSync(true);
+  }
+
+  function bindPanelHooks() {
+    if (!elementor.hooks || elementor.hooks.__emkShaderBridgeBound) return;
+    elementor.hooks.__emkShaderBridgeBound = true;
+    elementor.hooks.addAction('panel/open_editor/widget', function (panel, model) { bindModel(model); });
+    elementor.hooks.addAction('panel/open_editor/container', function (panel, model) { bindModel(model); });
+    elementor.hooks.addAction('panel/open_editor/section', function (panel, model) { bindModel(model); });
+    elementor.hooks.addAction('panel/open_editor/column', function (panel, model) { bindModel(model); });
+  }
+
+  function bindPanelDomFallback() {
+    $(document).on(
+      'change input click',
+      '.elementor-control-emk_shader_enable input,' +
+      '.elementor-control-emk_shader_enable .elementor-switch,' +
+      '.elementor-control[class*="emk_shader_"] input,' +
+      '.elementor-control[class*="emk_shader_"] select,' +
+      '.elementor-control[class*="emk_shader_"] textarea',
+      function () {
+        scheduleSync(true);
+      }
+    );
+  }
+
+  function startPolling() {
+    if (polling) return;
+    polling = setInterval(function () {
+      syncSelected(false);
+    }, 500);
+    scheduleSync(true);
+  }
+
+  bindPanelHooks();
+  bindPanelDomFallback();
+  startPolling();
+
+  window.EMKShaderEditorBridge = {
+    version: VERSION,
+    sync: function () { syncSelected(true); },
+    render: function (id) { renderById(id, getSettingsForId(id), true); }
+  };
 })(jQuery);
