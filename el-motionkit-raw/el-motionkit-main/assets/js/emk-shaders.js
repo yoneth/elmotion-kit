@@ -753,6 +753,7 @@
       if (raw.indexOf('globals/colors?id=') === 0) {
         var resolved = resolveGlobalColor(raw);
         if (resolved) return resolved;
+        return fallback;
       }
       return raw;
     }
