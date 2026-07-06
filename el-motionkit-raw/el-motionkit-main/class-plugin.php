@@ -325,18 +325,10 @@ class Plugin {
 		$motion_ver = file_exists( $motion_src ) ? filemtime( $motion_src ) : EMK_VERSION;
 		wp_enqueue_script( 'emk--motion', plugins_url( '/assets/js/emk-motion.js', __FILE__ ), [ 'jquery', 'elementor-frontend', 'elementor-frontend-modules', 'gsap' ], $motion_ver, true );
 
-		// EMK Shaders (Paper Shaders bundle + presets + renderer)
-		$paper_src  = EMK_PATH . 'assets/js/emk-paper-shaders.min.js';
-		$paper_ver  = file_exists( $paper_src ) ? filemtime( $paper_src ) : EMK_VERSION;
-		wp_enqueue_script( 'emk-paper-shaders', plugins_url( '/assets/js/emk-paper-shaders.min.js', __FILE__ ), [], $paper_ver, true );
-
-		$presets_src  = EMK_PATH . 'assets/js/emk-shader-presets.min.js';
-		$presets_ver  = file_exists( $presets_src ) ? filemtime( $presets_src ) : EMK_VERSION;
-		wp_enqueue_script( 'emk-shader-presets', plugins_url( '/assets/js/emk-shader-presets.min.js', __FILE__ ), [ 'emk-paper-shaders' ], $presets_ver, true );
-
-		$shaders_src  = EMK_PATH . 'assets/js/emk-shaders.min.js';
-		$shaders_ver  = file_exists( $shaders_src ) ? filemtime( $shaders_src ) : EMK_VERSION;
-		wp_enqueue_script( 'emk--shaders', plugins_url( '/assets/js/emk-shaders.min.js', __FILE__ ), [ 'jquery', 'elementor-frontend', 'elementor-frontend-modules', 'emk-paper-shaders', 'emk-shader-presets' ], $shaders_ver, true );
+		// EMK Shaders — enqueue small loader; heavy assets (paper-shaders + presets + runtime) fetched on-demand
+		$loader_src  = EMK_PATH . 'assets/js/emk-shader-loader.js';
+		$loader_ver  = file_exists( $loader_src ) ? filemtime( $loader_src ) : EMK_VERSION;
+		wp_enqueue_script( 'emk-shader-loader', plugins_url( '/assets/js/emk-shader-loader.js', __FILE__ ), [ 'jquery', 'elementor-frontend', 'elementor-frontend-modules' ], $loader_ver, true );
 
 		// EMK Motion FX (image + text animation handler)
 		$fx_src  = EMK_PATH . 'assets/js/emk-motion-fx.js';
