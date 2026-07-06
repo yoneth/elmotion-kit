@@ -9,7 +9,6 @@
   var iframeWindow = null;
   var lastSnapshotById = {};
   var currentId = null;
-  var prevId = null;
   var scheduled = null;
   var polling = null;
 
@@ -203,13 +202,24 @@
   function syncSelected(force) {
     var id = getSelectedId();
     if (!id) return;
-    // Destroy shader on previously selected element when selection changes
-    if (id !== prevId) {
-      if (prevId) renderById(prevId, { emk_shader_enable: '' }, true);
-      prevId = id;
-    }
     currentId = id;
     renderById(id, getSettingsForId(id), !!force);
+  }
+
+  function renderAll() {
+    var root = getRootContainer();
+    if (!root) return;
+    function walk(container) {
+      var attrs = container.settings && container.settings.attributes;
+      if (attrs && attrs.emk_shader_enable === 'yes') {
+        var settings = getSettings(container);
+        var id = getModelId(container);
+        if (id) renderById(id, settings, false);
+      }
+      var children = childrenOf(container);
+      for (var i = 0; i < children.length; i++) walk(children[i]);
+    }
+    walk(root);
   }
 
   function scheduleSync(force) {
@@ -271,6 +281,9 @@
     polling = setInterval(function () {
       syncSelected(false);
     }, 500);
+    // Delay renderAll — Elementor container tree may not be ready at script load
+    setTimeout(function () { renderAll(); }, 2000);
+    setTimeout(function () { renderAll(); }, 5000);
     scheduleSync(true);
   }
 
