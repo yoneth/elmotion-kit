@@ -498,22 +498,11 @@ class Plugin {
 			true
 		);
 
-		// EMK Shaders for editor preview
-		$paper_src  = EMK_PATH . 'assets/js/emk-paper-shaders.min.js';
-		$paper_ver  = file_exists( $paper_src ) ? filemtime( $paper_src ) : EMK_VERSION;
-		wp_enqueue_script( 'emk-paper-shaders', plugins_url( '/assets/js/emk-paper-shaders.min.js', __FILE__ ), [], $paper_ver, true );
+		// EMK Shaders — enqueued via elementor/preview/enqueue_scripts hook for iframe context
 
-		$presets_src  = EMK_PATH . 'assets/js/emk-shader-presets.min.js';
-		$presets_ver  = file_exists( $presets_src ) ? filemtime( $presets_src ) : EMK_VERSION;
-		wp_enqueue_script( 'emk-shader-presets', plugins_url( '/assets/js/emk-shader-presets.min.js', __FILE__ ), [ 'emk-paper-shaders' ], $presets_ver, true );
-
-		$shaders_src  = EMK_PATH . 'assets/js/emk-shaders.min.js';
-		$shaders_ver  = file_exists( $shaders_src ) ? filemtime( $shaders_src ) : EMK_VERSION;
-		wp_enqueue_script( 'emk--shaders', plugins_url( '/assets/js/emk-shaders.min.js', __FILE__ ), [ 'jquery', 'elementor-editor', 'emk-paper-shaders', 'emk-shader-presets' ], $shaders_ver, true );
 		wp_enqueue_script( 'emk-editor', plugins_url( '/assets/js/editor.min.js', __FILE__ ), [
 			'elementor-editor',
 			'emk--motion-fx',
-			'emk--shaders',
 			'emk-text-animation-shared',
 		], $editor_version, true );
 
@@ -527,6 +516,24 @@ class Plugin {
 		
 
 
+	}
+
+	/**
+	 * Enqueue shader scripts for the editor preview iframe.
+	 * Runs in the iframe context where elementorFrontend is available.
+	 */
+	public function preview_scripts() {
+		$paper_src  = EMK_PATH . 'assets/js/emk-paper-shaders.min.js';
+		$paper_ver  = file_exists( $paper_src ) ? filemtime( $paper_src ) : EMK_VERSION;
+		wp_enqueue_script( 'emk-paper-shaders', plugins_url( '/assets/js/emk-paper-shaders.min.js', __FILE__ ), [], $paper_ver, true );
+
+		$presets_src  = EMK_PATH . 'assets/js/emk-shader-presets.min.js';
+		$presets_ver  = file_exists( $presets_src ) ? filemtime( $presets_src ) : EMK_VERSION;
+		wp_enqueue_script( 'emk-shader-presets', plugins_url( '/assets/js/emk-shader-presets.min.js', __FILE__ ), [ 'emk-paper-shaders' ], $presets_ver, true );
+
+		$shaders_src  = EMK_PATH . 'assets/js/emk-shaders.min.js';
+		$shaders_ver  = file_exists( $shaders_src ) ? filemtime( $shaders_src ) : EMK_VERSION;
+		wp_enqueue_script( 'emk--shaders', plugins_url( '/assets/js/emk-shaders.min.js', __FILE__ ), [ 'jquery', 'elementor-frontend', 'elementor-frontend-modules', 'emk-paper-shaders', 'emk-shader-presets' ], $shaders_ver, true );
 	}
 
 	public function print_emk_editor_scripts() {
@@ -547,12 +554,6 @@ class Plugin {
 		$editor_ver = file_exists( $editor ) ? filemtime( $editor ) : EMK_VERSION;
 		$nonce  = wp_create_nonce( 'emk-editor' );
 		$ajax   = admin_url( 'admin-ajax.php' );
-		$paper_ver   = file_exists( EMK_PATH . 'assets/js/emk-paper-shaders.min.js' )   ? filemtime( EMK_PATH . 'assets/js/emk-paper-shaders.min.js' )   : EMK_VERSION;
-		$presets_ver = file_exists( EMK_PATH . 'assets/js/emk-shader-presets.min.js' ) ? filemtime( EMK_PATH . 'assets/js/emk-shader-presets.min.js' ) : EMK_VERSION;
-		$shaders_ver = file_exists( EMK_PATH . 'assets/js/emk-shaders.min.js' )          ? filemtime( EMK_PATH . 'assets/js/emk-shaders.min.js' )          : EMK_VERSION;
-		echo '<script id="emk-paper-shaders-js" src="' . esc_url( $base . 'emk-paper-shaders.min.js' ) . '?ver=' . esc_attr( $paper_ver ) . '"></script>' . "\n";
-		echo '<script id="emk-shader-presets-js" src="' . esc_url( $base . 'emk-shader-presets.min.js' ) . '?ver=' . esc_attr( $presets_ver ) . '"></script>' . "\n";
-		echo '<script id="emk-shaders-js" src="' . esc_url( $base . 'emk-shaders.min.js' ) . '?ver=' . esc_attr( $shaders_ver ) . '"></script>' . "\n";
 		echo '<script id="emk-motion-fx-js" src="' . esc_url( $base . 'emk-motion-fx.js' ) . '?ver=' . esc_attr( $fx_ver ) . '"></script>' . "\n";
 		echo '<script id="emk-text-animation-shared-js" src="' . esc_url( $base . 'emk-text-animation-shared.js' ) . '?ver=' . esc_attr( $shared_ver ) . '"></script>' . "\n";
 		echo '<script id="emk-editor-js" src="' . esc_url( $base . 'editor.min.js' ) . '?ver=' . esc_attr( $editor_ver ) . '"></script>' . "\n";
@@ -808,6 +809,9 @@ class Plugin {
 		// elementor/editor/after_enqueue_scripts are not printed by default. Force-print
 		// them via admin_print_footer_scripts on Elementor editor pages only.
 		add_action( 'admin_print_footer_scripts', [ $this, 'print_emk_editor_scripts' ] );
+
+		// Enqueue shader assets in preview iframe (elementorFrontend context)
+		add_action( 'elementor/preview/enqueue_scripts', [ $this, 'preview_scripts' ] );
 
 		// Register editor style
 		add_action( 'elementor/editor/after_enqueue_styles', [ $this, 'editor_styles' ] );
