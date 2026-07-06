@@ -513,6 +513,11 @@ class Plugin {
 		] );
 
 		wp_localize_script( 'emk-editor', 'EMK_Editor', $data );
+
+		// EMK Shader Editor Bridge — relays setting changes from parent to preview iframe
+		$bridge_src  = EMK_PATH . 'assets/js/emk-shader-editor-bridge.js';
+		$bridge_ver  = file_exists( $bridge_src ) ? filemtime( $bridge_src ) : EMK_VERSION;
+		wp_enqueue_script( 'emk-shader-editor-bridge', plugins_url( '/assets/js/emk-shader-editor-bridge.js', __FILE__ ), [ 'jquery', 'elementor-editor' ], $bridge_ver, true );
 		
 
 
@@ -556,6 +561,8 @@ class Plugin {
 		$ajax   = admin_url( 'admin-ajax.php' );
 		echo '<script id="emk-motion-fx-js" src="' . esc_url( $base . 'emk-motion-fx.js' ) . '?ver=' . esc_attr( $fx_ver ) . '"></script>' . "\n";
 		echo '<script id="emk-text-animation-shared-js" src="' . esc_url( $base . 'emk-text-animation-shared.js' ) . '?ver=' . esc_attr( $shared_ver ) . '"></script>' . "\n";
+		$bridge_src_ver = file_exists( EMK_PATH . 'assets/js/emk-shader-editor-bridge.js' ) ? filemtime( EMK_PATH . 'assets/js/emk-shader-editor-bridge.js' ) : EMK_VERSION;
+		echo '<script id="emk-shader-editor-bridge-js" src="' . esc_url( $base . 'emk-shader-editor-bridge.js' ) . '?ver=' . esc_attr( $bridge_src_ver ) . '"></script>' . "\n";
 		echo '<script id="emk-editor-js" src="' . esc_url( $base . 'editor.min.js' ) . '?ver=' . esc_attr( $editor_ver ) . '"></script>' . "\n";
 		echo '<script>window.EMK_Editor = ' . wp_json_encode( [
 			'ajaxUrl'  => $ajax,
