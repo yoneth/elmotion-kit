@@ -9,6 +9,7 @@
   var iframeWindow = null;
   var lastSnapshotById = {};
   var currentId = null;
+  var prevId = null;
   var scheduled = null;
   var polling = null;
 
@@ -124,6 +125,13 @@
   }
 
   function getSelectedId() {
+    var selection = elementor.selection;
+    var elements = selection && selection.getElements && selection.getElements();
+    if (elements && elements.length) {
+      var model = elements[0];
+      return getModelId(model);
+    }
+    // Fallback: CSS class detection
     var doc = getIframeDocument();
     var selected = doc && doc.querySelector('.elementor-element-edit-mode');
     if (selected) return selected.getAttribute('data-id');
@@ -192,10 +200,14 @@
       });
     });
   }
-
   function syncSelected(force) {
     var id = getSelectedId();
     if (!id) return;
+    // Destroy shader on previously selected element when selection changes
+    if (id !== prevId) {
+      if (prevId) renderById(prevId, { emk_shader_enable: '' }, true);
+      prevId = id;
+    }
     currentId = id;
     renderById(id, getSettingsForId(id), !!force);
   }
