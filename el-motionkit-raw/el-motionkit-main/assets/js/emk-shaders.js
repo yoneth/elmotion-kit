@@ -1344,6 +1344,17 @@
         }
       },
 
+      onElementChange: function (settingKey) {
+        if (settingKey !== 'emk_shader_enable') return;
+        this.element = this.$element && this.$element[0];
+        if (!this.element) return;
+        if (this.getElementSettings('emk_shader_enable') === 'yes') {
+          EMKShaders.run(this.element, this.getElementSettings());
+        } else {
+          EMKShaders.destroy(this.element);
+        }
+      },
+
       onDestroy: function () {
         if (!this.element) return;
         EMKShaders.destroy(this.element);
