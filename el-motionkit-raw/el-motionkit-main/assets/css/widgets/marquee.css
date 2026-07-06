@@ -1,0 +1,104 @@
+/* El MotionKit — Marquee widget styles.
+ * The widget no longer uses Swiper. Instead, .emk--marquee-track is a
+ * long inline-block strip duplicated in render() so the GSAP timeline
+ * in marquee.js can scroll it left by exactly one copy width and
+ * loop with no seam.
+ *
+ * Selector cheat-sheet:
+ *   .emk--marquee          - outer wrapper (one per widget instance)
+ *   .emk--marquee-viewport - the visible window (overflow: hidden)
+ *   .emk--marquee-track    - the long strip that GSAP translates
+ *   .emk--marquee-item     - one slide (text or image)
+ *   .emk--marquee-text     - text node
+ *   .emk--marquee-separator- separator icon between text items
+ */
+
+.emk--marquee {
+	position: relative;
+	overflow: hidden;
+	width: 100%;
+	direction: ltr; /* GSAP will reverse this for right-scroll if needed */
+}
+
+/* The viewport clips the track to the widget's width. The track is
+   twice the width of the items so the GSAP loop is seamless. */
+.emk--marquee .emk--marquee-viewport {
+	overflow: hidden;
+	width: 100%;
+}
+
+.emk--marquee .emk--marquee-track {
+	display: inline-flex;
+	/* flex keeps items on a single line; gap adds the per-item
+	   spacing set by the Elementor control. */
+	flex-wrap: nowrap;
+	align-items: center;
+	white-space: nowrap;
+	will-change: transform;
+}
+
+/* Edge fade: 12px each side, narrow because the track is rendered
+   with 3 copies so there's always full-opacity text inside the viewport. */
+.emk--marquee.emk--marquee-edge-fade .emk--marquee-viewport {
+	mask-image: linear-gradient(
+		to right,
+		transparent 0,
+		#000 12px,
+		#000 calc(100% - 12px),
+		transparent 100%
+	);
+	-webkit-mask-image: linear-gradient(
+		to right,
+		transparent 0,
+		#000 12px,
+		#000 calc(100% - 12px),
+		transparent 100%
+	);
+}
+
+/* Per-item: intrinsic width. For text, this is the width of the
+   text content (no forced equalisation). For images, the height
+   control sets height, and width is auto-derived. */
+.emk--marquee .emk--marquee-item {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	width: max-content;
+	max-width: none;
+	white-space: nowrap;
+}
+
+/* Text item: nowrap + width: max-content ensures each text block
+   keeps its own length. */
+.emk--marquee .emk--marquee-text {
+	white-space: nowrap;
+	display: inline-block;
+}
+
+.emk--marquee .emk--marquee-separator {
+	display: inline-flex;
+	align-items: center;
+}
+.emk--marquee .emk--marquee-separator .e-font-icon-svg {
+	width: 1em;
+	height: 1em;
+	display: block;
+}
+.emk--marquee .emk--marquee-separator svg {
+	width: 1em;
+	height: 1em;
+	display: block;
+}
+.emk--marquee .emk--marquee-item img {
+	display: block;
+	width: auto;
+	height: auto;
+}
+
+/* Pause on hover (class set in render() based on the
+   pause_on_hover control). */
+.emk--marquee.emk--marquee-pause-hover:hover .emk--marquee-track {
+	/* GSAP reads the ._emkMarqueeTween property; we toggle via
+	   marquee.js in response to mouseenter / mouseleave. This
+	   class is just a CSS marker — the JS pause hook matches it. */
+}

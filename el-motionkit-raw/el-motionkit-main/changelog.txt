@@ -1,0 +1,77 @@
+== Changelog ==
+
+
+= 2.5.1 =
+* Security: Removed unsanitized SVG upload capability; removed dead/unauthenticated AJAX endpoint.
+* Fixed: Changelog wording — legacy changelog entries rephrased for accuracy (rename/fork vs independent creation distinction).
+* Fixed: Glassmorphism saturation slider unit mismatch (was saturate(12000%)).
+* Fixed: Glassmorphism border/radius now uses Elementor's native Border controls instead of conflicting duplicates.
+* Fixed: Image FX dead widget targets (`emk--image`, `emk--image-box`, `emk--timeline`) removed — only real widgets remain.
+* Clean: Residual `wcf`/`WcfSlider` identifiers purged from PHP, JS, and CSS files.
+* Clean: Removed dead upsell CSS (`.wcfaddon-pro-notice`) and stale widget CSS.
+* Chore: Badge logo class `.wcf` renamed to `.emk-badge` in PHP and CSS.
+
+= 2.5.0 =
+* Major: Full clean-room rewrite of 3 extensions (Glassmorphism, Image FX, Text FX) per REWRITE-SPEC-extensions.md — new control keys, new effect types, clean architecture.
+* New: Glassmorphism (emk_glass_*) — pure CSS, no JS, no GSAP. Controls: blur, saturation, tint, border, radius.
+* New: Image FX (emk_img_fx_*) — 3 effects: Wipe (clip-path reveal), Zoom (scale settle), Elastic (stretch). GSAP + ScrollTrigger.
+* New: Text FX (emk_txt_fx_*) — 4 effects: Fade Up (y+opacity), 3D Tilt (rotationX+perspective), Mask Up (yPercent+overflow), Pop (scale+back.out). GSAP SplitText + ScrollTrigger.
+* New: emk-motion-fx.js — unified frontend + editor animation runner via window.EMKFx.run(). Shared between frontend handler and editor Play button.
+* Changed: All control keys renamed (emk_text_animation → emk_txt_fx_type, emk-image-animation → emk_img_fx_type, etc.). Existing content needs re-configuration.
+* Changed: glassmorphism.php stripped of all parallax/scroll-smoother/attributes code — 100% pure glassmorphism.
+* Changed: editor preview now uses same EMKFx.run() as frontend, not separate shared.js.
+* Changed: Editor play button event renamed to emk/fx/preview.
+* Clean: Zero AAE/wcf/wealcoder/amelia strings in all 3 extension files + emk-motion-fx.js + editor.js.
+* Clean: prefers-reduced-motion respected, SplitText always reverted on cleanup, idempotency guards active.
+
+
+= 2.4.4 =
+* Note: Pin Element needs CONTENT below the pinned widget to look good AND to avoid a "jump" at the end of the pin range. With `pinSpacing: yes` (default), GSAP creates a pin-spacer sized to the pin's hold distance, then removes it when the pin releases. If there's no content directly under the pinned widget, the natural flow position is much lower than the pin-end position, so the element visibly snaps downward (a "jump"). Adding widgets immediately under the pinned widget (chapter headings, paragraphs, sections) keeps the natural flow position aligned with the pin end, eliminating the jump. Verified: 3 chapter headings + 3 paragraphs under the pin, hold duration 250px, frame-by-frame test at y=3230-3270 shows smooth 2px-per-scroll release with no jump.
+* Fixed: Cursor Hover background and text color now apply the user-chosen value from the editor (was: always falling back to defaults #111111 and #ffffff). The shared `resolveColor` helper reads from `data-settings` and falls back to the Elementor global color map (exposed via `window.EMK_GLOBALS`) when the value is a `globals/colors?id=...` reference. Direct color picker values work fully; global colors work for widgets that have a corresponding kit-level global.
+* Fixed: Elementor 4.x drops the `__globals__` reference from the rendered `data-settings` for our custom Common controls (Advanced tab). The fix works around this by reading the resolved hex from the kit's `_elementor_page_settings` (system_colors + custom_colors) and exposing it as `window.EMK_GLOBALS.colors` to the frontend. For direct color picker choices, the value comes straight from `data-settings`. For global color choices, the resolution depends on the global being properly registered in the active kit.
+* Fixed: Cursor Hover created a hidden black 86px div for EVERY widget on the page, even those without `emk_cursor_hover_enable=yes`. After many test runs (and possibly hot reloads) dozens of these accumulated in the DOM, occasionally showing as a stray black circle on the page. Restored the missing `if (enable !== 'yes') return;` early-return guard, so only widgets with Cursor Hover enabled get a cursor div. Verified: cursor count on a typical page dropped from 75 to 2.
+* Fixed: Hover Image used to fly in from the top-left corner of the viewport (translate 0,0) on first hover, instead of appearing at the cursor position. The fix snaps the image to the cursor position instantly on the first `mouseenter`/`mousemove` (no tween), then tweens subsequent moves normally. So the image now appears where the mouse is, no long-distance fly-in.
+* UX: All 5 Advanced-tab motion FX (Mouse Move, Cursor Hover, Hover Image, Parallax, Horizontal Scroll) now have user-friendly labels and helper descriptions. Renamed: "Movement Scope" → "Track Mouse On" (with options "This widget" / "Parent container" / "Custom area (advanced)"), "Move X/Y" → "Move Horizontal/Vertical (px)", "Duration" → "Follow Speed (seconds)", "Size" → "Cursor Size (px)" / "Image Size (px)", "Offset X/Y" → "Offset Horizontal/Vertical (px)", "Move Y" → "Parallax Distance (px)", "Scrub" → "Smoothness (seconds)", "Track Selector" and "Disable Below Width" labels updated for clarity. Each field now has a short description explaining what the value does in plain language. Internal field keys unchanged (backward compatible with existing user data).
+* UX: Mouse Move, Hover Image, Horizontal Scroll sections now have introductory RAW_HTML hints explaining what the effect does before the user enables it.
+* Fixed: Horizontal Scroll was completely broken. The `pin` variable was missing from scope inside the new `ScrollTrigger.create()` call (refactored from `gsap.to` to a mod-callback pattern). Reworked the handler: it now uses `ScrollTrigger.create()` with an `onUpdate` mod callback (no tween, more reliable for track x). Also added a safety net that forces the track and its Elementor `.e-con-inner` to be wider than the container when the user explicitly sets a scroll distance, fixing the common Elementor gotcha where flex children auto-stretch to container width. Verified: track animates from x=0 to x=-991 over 1500px scroll on a 4-color-headings demo.
+* UX: Pin Element in the Advanced tab is now user-friendly. "Start" and "End" text inputs replaced with "Pin Position" dropdown (Top / Center / Bottom / 80% down / Custom), "Offset (px)" number, "Hold Duration (px)" number, "Add Space Below" toggle, "Smooth Pin" toggle, and "Disable on Mobile" toggle. Helper descriptions under each field explain what the setting does in plain language.
+* Fixed: Pin Element "Start" and "End" no longer fall back to wrong defaults. The new `resolvePinStart`/`resolvePinEnd` adapters convert friendly values to the underlying GSAP syntax, with backward compatibility for legacy data (`emk_pin_start`/`emk_pin_end` text fields still respected).
+* Fixed: Settings adapter (`buildSettings`) reads from `data-settings` attribute as fallback when Elementor 4.x doesn't propagate settings to the handler model. This was the root cause of pin/FX silently failing on some widgets.
+* Fixed: Text Move editor Play Now now splits per-line + applies perspective so 3D rotation is visible (was: only fade-in)
+* Fixed: text_move transformOrigin now applied to both from and to vars so 3D rotation interpolates cleanly
+* Fixed: text_reveal and text_scale now use force3D for hardware acceleration
+* Fixed: Elementor 4.1+ editor scripts (emk-text-animation-shared, emk-editor) now print via admin_print_footer_scripts fallback
+* Fixed: Text Move transformOrigin now preserves Z value (GSAP strips Z, so we apply the full X Y Z via inline CSS with onUpdate callback)
+* Fixed: text animation handlers now register even when elementor/frontend/init fires before emk-addons-ex.js loads (added waitForElementor polling fallback)
+* Fixed: text widget multi-paragraph animations now target every child paragraph, not just the last one (text_move, text_reveal, text_scale)
+* Fixed: emk--addons-ex.js and other widget scripts now register and enqueue via get_widget_scripts() in widget_scripts()
+* Fixed: get_widget_scripts() loop now uses filemtime() for cache-busting, so browser always loads the latest emk-addons-ex.js (was: hard-coded WP 7.0)
+* Fixed: Elementor 4 only fires generic 'frontend/element_ready/widget' on page load (per-type hooks may never fire). Added dedup'd generic-widget fallback so EMK text/title handlers still attach.
+* Fixed: Editor Play Now and frontend now share the same animation runner (EMKTextAnimationShared.runTextAnimation) so the preview and live site produce byte-identical motion for the same widget settings. Settings are read from the same Elementor model in both contexts.
+* Fixed: Editor Play Now settings object (was undefined) — collected all text_* keys from settingsModel and passed to shared runner with immediate:true.
+* Fixed: Editor Play Now now defers one frame via requestAnimationFrame to let Elementor finish its own click handler (which can trigger preview re-render) before the animation runs. Added [EMK PlayNow] debug logs.
+* Fixed: Editor Play Now split: GSAP SplitText 3.13 refuses to split the editor-touched `.emk--text` element (it has _x_marker and other Elementor hooks), returning 0 lines/words/chars. The shared runner now accepts `editorClone: true` and swaps the target for a fresh div with the same content. Animation runs correctly.
+* Fixed: Scrub on animated text widgets. The `apply_trigger` method forced `scrub: trigger_type === "play_with_scroll"` for every ScrollTrigger, ignoring the user's `spin_text_scrub` setting; animated text widgets use `on_scroll` and never got scrub. Scrub now takes the user setting directly. Also default `trigger_type` to "on_scroll" in the 4 text animation handlers (char/word, text_move, text_reveal, text_scale) so the ScrollTrigger is created even when the user never opened the trigger dropdown.
+* Fixed: DrawSVG scrub flicker. When `ScrollTrigger` was active, the timeline still applied the user's `repeat: -1` (infinite) and `yoyo: true`, so the path kept drawing and un-drawing itself while the user scrolled. Repeat and yoyo are now disabled whenever scrub is set (any truthy scrub value forces `repeat: 0, yoyo: false`). Also added `__emkDrawSvgBound` dedup so the handler does not stack duplicate animations if Elementor re-fires the hook. `gsap-draw.js` now registers with `filemtime()` cache-bust.
+* Fixed: Advanced-tab motion FX (Mouse Move, Cursor Hover, Hover Image, Horizontal Scroll, Parallax, Pin Element) silently never bound. `emk-motion.js` only listened to `elementor/frontend/init` once, but Elementor 4.x had already fired that event by the time the script ran, so the `CleanMotion` handler was never registered and every FX was a no-op. Now race-safe: listens to the event AND polls for already-initialized `elementorFrontend`, with `__emkCleanMotionBound` dedup on `elementorFrontend.hooks`. `emk-motion.js` now registers with `filemtime()` cache-bust.
+* Major: Keep/Drop reduction from 49 to 5 core widgets
+* Major: Forked from Animation Addons for Elementor Free (GPL v2); residual WCF/AAE identifiers renamed to the EMK namespace.
+* Fixed: DrawSVG JS event name mismatch
+* Fixed: Text Hover Image memory leak + hook timing
+* Clean: Removed all legacy widget assets
+* Clean: Removed templates, stale images, unused JS libs
+* Enhancement: Slider trait renamed to EMK_Slider_Trait
+* Enhancement: Extension section IDs renamed to EMK namespace
+
+= 2.3.7 =
+* Reworked advanced motion controls under the EMK namespace.
+
+= 2.3.6 =
+* Initial release.
+
+= 2.4.12 - 2026-06-18 =
+* Fixed: Separator icon SVG not rendering (0x0) in Marquee widget due to Elementor CSS conflict
+* Fixed: Separator size slider not real-time in Elementor editor — now CSS-only via selectors
+* Added: Separator Gap control for spacing between icon and text
+* Changed: Renamed "Icon Gap" label to "Separator Gap"
+* Improved: Marquee CSS refactored for better SVG sizing across frontend and editor

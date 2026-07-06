@@ -1,0 +1,52 @@
+
+
+.elementor-panel .elementor-element .icon .emk-badge::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 18px;
+  height: 18px;
+  background-image: url("../images/emk.png");
+  background-position: center center;
+  background-size: cover;
+  filter: grayscale(0);
+  transition: 0.3s;
+}
+
+.elementor-panel .elementor-element:hover .icon .emk-badge::after {
+  filter: grayscale(0);
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.emk-logo::after {
+  content: "";
+  display: inline-block;
+  vertical-align: middle;
+  width: 16px;
+  height: 16px;
+  background-image: url("../images/emk.png");
+  background-position: center center;
+  background-size: cover;
+}
+
+.elementor-panel :is(.elementor-panel-menu-item)[class*=elementor-panel-menu-item-settings-emk-] {
+  position: relative;
+}
+.elementor-panel :is(.elementor-panel-menu-item)[class*=elementor-panel-menu-item-settings-emk-]:after {
+  content: "";
+  display: inline-block;
+  vertical-align: middle;
+  width: 16px;
+  height: 16px;
+  background-image: url("../images/emk.png");
+  background-position: center center;
+  background-size: cover;
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 1em;
+  transform: translateY(-50%);
+}
+
+

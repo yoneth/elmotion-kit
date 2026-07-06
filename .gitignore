@@ -1,0 +1,13 @@
+# OS noise
+.DS_Store
+
+# Legacy / archive — gak perlu di-track
+AAE/
+aae-free-raw/
+el-motionkit-main.zip
+
+# Release artifacts
+release/*.zip
+
+# Temp inspect scripts
+data-inspect-*/
