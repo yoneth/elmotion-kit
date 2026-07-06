@@ -139,7 +139,6 @@ class EMK_Shaders {
 				'return_value'       => 'yes',
 				'default'            => '',
 				'frontend_available' => true,
-				'render_type'        => 'none',
 			]
 		);
 
